@@ -1,0 +1,13 @@
+# AutoReplant Plugin Configuration
+
+# Default state for all players (true = enabled, false = disabled)
+# Players can override this with /autoreplant on/off
+default-enabled: true
+
+# Messages (supports & color codes)
+messages:
+  prefix: "&8[&aAutoReplant&8] "
+  enabled: "&a自動回種植 &l開啟"
+  disabled: "&c自動回種植 &l關閉"
+  usage: "&e用法: /<command> <on|off>"
+  no-permission: "&c你沒有權限使用此指令。"
