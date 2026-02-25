@@ -73,26 +73,53 @@
 
 ```yaml
 # 所有玩家的預設狀態（true = 開啟，false = 關閉）
-# 玩家可透過指令覆蓋此設定
 default-enabled: true
 
-# 訊息設定（支援 & 顏色代碼）
+# 訊息設定 — 支援兩種語法（可混用）：
+#   MiniMessage 標籤：<green>, <bold>, <#ff0000>, <gradient:#f00:#00f> ...
+#   傳統 & 代碼：    &a, &l, &#00ff00 ...（大小寫均可）
+# 佔位符：<command> 會被玩家實際輸入的指令名稱取代
 messages:
-  prefix: "&8[&aAutoReplant&8] "
-  enabled: "&a自動回種植 &l開啟"
-  disabled: "&c自動回種植 &l關閉"
-  usage: "&e用法: /<command> <on|off>"
-  no-permission: "&c你沒有權限使用此指令。"
+  prefix:        "<dark_gray>[<green>AutoReplant<dark_gray>] "
+  enabled:       "<green>自動回種植 <bold>開啟"
+  disabled:      "<red>自動回種植 <bold>關閉"
+  usage:         "<yellow>用法: /<command> <on|off>"
+  no-permission: "<red>你沒有權限使用此指令。"
 ```
 
-#### 顏色代碼對照
+#### 訊息語法說明
+
+兩種格式可**自由混用**於同一字串中：
+
+**MiniMessage 標籤**（推薦）
+
+| 標籤 | 效果 |
+|------|------|
+| `<green>` / `<red>` / `<yellow>` … | 顏色 |
+| `<bold>` / `<italic>` / `<underlined>` | 格式 |
+| `<#ff0000>` | 十六進位 RGB 顏色 |
+| `<gradient:#ff0000:#0000ff>text</gradient>` | 漸層色 |
+| `<rainbow>text</rainbow>` | 彩虹色 |
+| `<reset>` | 清除所有格式 |
+
+完整語法參考：[MiniMessage 文件](https://docs.advntr.dev/minimessage/format.html)
+
+**傳統 `&` 代碼**（向下相容）
 
 | 代碼 | 顏色 | 代碼 | 格式 |
 |------|------|------|------|
-| `&a` | 綠色 | `&l` | 粗體 |
-| `&c` | 紅色 | `&o` | 斜體 |
-| `&e` | 黃色 | `&n` | 底線 |
+| `&a` / `&A` | 綠色 | `&l` | 粗體 |
+| `&c` / `&C` | 紅色 | `&o` | 斜體 |
+| `&e` / `&E` | 黃色 | `&n` | 底線 |
 | `&8` | 深灰 | `&r` | 重設 |
+| `&#RRGGBB` | 十六進位色 | `&k` | 隨機字元 |
+
+**混用範例**
+
+```yaml
+prefix: "<dark_gray>[&aAutoReplant<dark_gray>] "
+enabled: "&a自動回種植 <bold>開啟 <#00ff88>✔"
+```
 
 ---
 

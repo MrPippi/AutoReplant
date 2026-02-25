@@ -65,8 +65,9 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 - Reads `default-enabled` from `config.yml` on startup.
 - Stores only *overrides* (players whose preference differs from the default) — keeps `players.yml` small.
 - Serialises/deserialises `playerStates` to/from `players.yml` using `YamlConfiguration`.
-- Provides `getMessage(key, label)` which prepends the prefix, substitutes `<command>`, and returns an Adventure `Component`.
-- Uses `LegacyComponentSerializer.legacyAmpersand()` to parse `&` colour codes from config strings.
+- Provides `getMessage(key, label)` which prepends the prefix, handles `<command>` substitution, and returns an Adventure `Component`.
+- **Dual-syntax messaging**: `translateLegacy(String)` first converts `&` codes and `&#RRGGBB` hex to MiniMessage tags, then `MiniMessage.miniMessage().deserialize(...)` parses the result. Both syntaxes can be mixed freely in the same config string.
+- `<command>` placeholder is resolved via `Placeholder.component(...)` (Adventure TagResolver) so it is always treated as plain text and never re-parsed by MiniMessage.
 
 #### `AutoReplantListener` (event listener)
 - Stateless — holds only a reference to the plugin.
@@ -113,6 +114,8 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | Only store overrides in `players.yml` | Minimises file I/O and keeps the YAML file readable; if a player flips back to default their entry is removed. |
 | No replant message | Per-action chat spam on large farms is annoying; the toggle command already confirms the state. |
 | Creative mode skip | Creative breaks don't drop items so seed consumption logic would silently fail. |
+| `translateLegacy()` pre-processes `&` codes → MiniMessage tags | Enables `MiniMessage` as the single deserializer while preserving backward compat with `&` codes. The two syntaxes never conflict because `&x` and `<tag>` use distinct delimiters. |
+| `Placeholder.component("command", ...)` instead of `.replace()` | Prevents `<command>` from being parsed as a MiniMessage tag and keeps the label as plain text. Safe against user-controlled label injection. |
 
 ---
 
@@ -141,7 +144,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 - Always use the `ignoreCancelled = true` annotation to avoid processing already-cancelled events.
 - Use `block.getDrops(ItemStack tool, Entity entity)` — not the bare `getDrops()` — for proper enchantment simulation.
 - Use `world.dropItemNaturally(location, item)` rather than `world.dropItem(...)` for randomised drop spread.
-- Prefer Adventure `Component` over legacy `String` messaging. Use `LEGACY.deserialize(...)` only when reading `&`-coded strings from config.
+- All player-facing text must go through `plugin.getMessage(key, label)` — never call `MiniMessage` or `LegacyComponentSerializer` directly outside `AutoReplantPlugin`.
 - Do **not** perform block mutations on the event thread if the block hasn't been broken yet — use a 1-tick `runTask` delay.
 
 ### Configuration
@@ -154,10 +157,12 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 - `savePlayerData()` **replaces** the entire `players` section each time; do not append.
 - Load on `onEnable`, save on `onDisable` — do not save on every command to avoid I/O churn.
 
-### Localization
+### Localization & Messaging
 - Messages and in-code comments are in **Traditional Chinese**.
 - New message keys go under `messages.*` in `config.yml`.
-- `<command>` is the only substitution placeholder in messages; replace with the actual label from the command handler.
+- Config values may use **MiniMessage tags** (`<green>`, `<bold>`, `<#ff0000>`, gradients, etc.) and/or **legacy `&` codes** (`&a`, `&l`, `&#00ff00`). Both are supported simultaneously via `translateLegacy()`.
+- `<command>` is the only substitution placeholder; it must be passed as the `label` argument to `getMessage()` — do **not** use string concatenation or `.replace()` for it.
+- To add a new placeholder: add a `Placeholder.component(...)` entry to the `MM.deserialize(...)` call in `getMessage()` and document it in the config comments.
 
 ---
 
@@ -170,6 +175,8 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | Modifying `drops` collection while iterating | `consumeOneSeed` only modifies the `amount` field of an existing `ItemStack` — it does not remove elements from the collection mid-iteration. |
 | `block.getDrops()` ignoring Fortune | Pass both `tool` and `player` to `block.getDrops(ItemStack, Entity)`. |
 | Saving all players regardless of default | Only store overrides; check `if (enabled == defaultEnabled) playerStates.remove(uuid)`. |
+| Using `.replace("<command>", label)` on raw config strings | String replacement runs before MiniMessage parsing; `<command>` would be parsed as an unknown tag. Always use `Placeholder.component(...)` inside `MM.deserialize()`. |
+| Calling `MiniMessage.deserialize()` directly on a config string without `translateLegacy()` | Legacy `&` codes in the string would appear as literal ampersand characters. Always go through `getMessage()`. |
 
 ---
 
