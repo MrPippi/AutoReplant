@@ -70,18 +70,28 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 - `<command>` placeholder is resolved via `Placeholder.component(...)` (Adventure TagResolver) so it is always treated as plain text and never re-parsed by MiniMessage.
 
 #### `AutoReplantListener` (event listener)
-- Stateless — holds only a reference to the plugin.
+- Holds a `pendingReplants` map (`Map<Location, Material>`) and a plugin reference.
 - Static `Map<Material, Material> CROP_TO_SEED` defines all supported crops and their seed items.
-- `onBlockBreak` guard chain (all must pass):
-  1. Player not in Creative mode
-  2. Block material is a key in `CROP_TO_SEED`
-  3. `block.getBlockData()` is `Ageable` and `age == maxAge` (fully grown)
-  4. `plugin.isAutoReplantEnabled(player)` returns true
-  5. `consumeOneSeed()` finds at least one seed in the simulated drops
-- Calls `block.getDrops(tool, player)` (not the no-arg overload) to respect Fortune enchantment.
-- Sets `event.setDropItems(false)` and drops items manually so the seed removal is reflected.
-- Schedules a **1-tick delayed task** (`Bukkit.getScheduler().runTask(plugin, ...)`) for the replant so the block is already air when `setType` is called.
-- Safety check inside the delayed task: position must be `AIR` and the block directly below must be `FARMLAND`.
+- Uses a **two-phase event architecture**:
+
+**Phase 1 — `onBlockBreak` (priority `HIGHEST`, ignoreCancelled)**
+  - Runs after all other plugins including protection plugins, so only unconditionally-broken blocks reach this handler.
+  - Guard chain (all must pass):
+    1. Player not in Creative mode
+    2. Block material is a key in `CROP_TO_SEED`
+    3. `block.getBlockData()` is `Ageable` and `age == maxAge` (fully grown)
+    4. `plugin.isAutoReplantEnabled(player)` returns true
+  - On pass: writes `pendingReplants.put(location.clone(), blockType)`.
+  - On fail (player has auto-replant OFF): calls `pendingReplants.remove(location)` to evict any stale entry left by a previously-cancelled break at that position.
+
+**Phase 2 — `onBlockDropItem` (priority `NORMAL`, ignoreCancelled)**
+  - Fires only after the block has **actually broken** — guaranteed no cancellation race.
+  - Drops in `event.getItems()` are the server's real computed values (includes Fortune, other-plugin modifications). No simulation needed.
+  - Reads and removes the entry from `pendingReplants`; returns early if nothing was pending.
+  - If `check-seeds` is enabled: calls `consumeOneSeed(items, seedMaterial)` — removes one seed `Item` from the list (or reduces its stack amount). Returns early if no seed found.
+  - If `check-seeds` is disabled: skips seed check; all drops spawn normally.
+  - Schedules a 1-tick delayed task to set the block back to the crop type (at default age 0).
+  - Safety check in the task: position must be `AIR` and block below must be `FARMLAND`.
 
 #### `AutoReplantCommand` (command + tab completer)
 - Implements both `CommandExecutor` and `TabCompleter`.
@@ -116,6 +126,9 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | Creative mode skip | Creative breaks don't drop items so seed consumption logic would silently fail. |
 | `translateLegacy()` pre-processes `&` codes → MiniMessage tags | Enables `MiniMessage` as the single deserializer while preserving backward compat with `&` codes. The two syntaxes never conflict because `&x` and `<tag>` use distinct delimiters. |
 | `Placeholder.component("command", ...)` instead of `.replace()` | Prevents `<command>` from being parsed as a MiniMessage tag and keeps the label as plain text. Safe against user-controlled label injection. |
+| Two-phase event architecture (`BlockBreakEvent HIGHEST` + `BlockDropItemEvent`) | Eliminates the cancellation race: `BlockDropItemEvent` only fires when the break is confirmed. No need for `event.setDropItems(false)` or manual item spawning. Drops are real (not simulated). |
+| `BlockBreakEvent` cleans up stale `pendingReplants` when player is opted-out | Prevents a race where Player A's cancelled break leaves an entry that Player B (opted-out) would accidentally trigger. |
+| `check-seeds` config option | Server-admin toggle: `true` consumes one seed from drops (balanced), `false` replants for free (quality-of-life). Defaults to `true`. |
 
 ---
 
@@ -177,6 +190,9 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | Saving all players regardless of default | Only store overrides; check `if (enabled == defaultEnabled) playerStates.remove(uuid)`. |
 | Using `.replace("<command>", label)` on raw config strings | String replacement runs before MiniMessage parsing; `<command>` would be parsed as an unknown tag. Always use `Placeholder.component(...)` inside `MM.deserialize()`. |
 | Calling `MiniMessage.deserialize()` directly on a config string without `translateLegacy()` | Legacy `&` codes in the string would appear as literal ampersand characters. Always go through `getMessage()`. |
+| Modifying drops in `BlockBreakEvent` | If a HIGHEST-priority plugin later cancels the break, items were already dropped but the block is still there (free items bug). Always use `BlockDropItemEvent` to modify drops. |
+| Iterating `List<Item>` with a for-each and calling `list.remove(item)` inside | Causes `ConcurrentModificationException`. Use an index-based `for (int i = 0; ...)` loop as done in `consumeOneSeed`. |
+| Forgetting to clean stale `pendingReplants` entries | If a player with auto-replant OFF breaks a crop that has a stale entry (from a previously-cancelled break by another player with it ON), the stale entry is removed in `onBlockBreak` before it can trigger falsely. |
 
 ---
 

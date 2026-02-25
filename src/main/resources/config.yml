@@ -4,6 +4,13 @@
 # Players can override this per-player with /autoreplant on/off
 default-enabled: true
 
+# Seed consumption check
+#   true  — A seed must be present in the block's drops before replanting.
+#           One seed is consumed from the drops as the cost of replanting.
+#           If no seed drops (e.g. unlucky beetroot harvest), replanting is skipped.
+#   false — Replant for free. No seed is consumed; all drops are given normally.
+check-seeds: true
+
 # ─── Messages ────────────────────────────────────────────────────────────────
 # Supports two syntaxes (can be mixed in the same string):
 #

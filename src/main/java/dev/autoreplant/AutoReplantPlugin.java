@@ -22,6 +22,7 @@ public class AutoReplantPlugin extends JavaPlugin {
     // Stores per-player overrides. If UUID is absent, the default applies.
     private final Map<UUID, Boolean> playerStates = new HashMap<>();
     private boolean defaultEnabled;
+    private boolean checkSeeds;
 
     private File dataFile;
     private YamlConfiguration dataConfig;
@@ -30,6 +31,7 @@ public class AutoReplantPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         defaultEnabled = getConfig().getBoolean("default-enabled", true);
+        checkSeeds     = getConfig().getBoolean("check-seeds", true);
 
         dataFile = new File(getDataFolder(), "players.yml");
         loadPlayerData();
@@ -53,6 +55,10 @@ public class AutoReplantPlugin extends JavaPlugin {
 
     public boolean isAutoReplantEnabled(Player player) {
         return playerStates.getOrDefault(player.getUniqueId(), defaultEnabled);
+    }
+
+    public boolean isCheckSeedsEnabled() {
+        return checkSeeds;
     }
 
     public void setAutoReplant(Player player, boolean enabled) {
