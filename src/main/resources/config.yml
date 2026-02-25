@@ -1,13 +1,23 @@
 # AutoReplant Plugin Configuration
 
 # Default state for all players (true = enabled, false = disabled)
-# Players can override this with /autoreplant on/off
+# Players can override this per-player with /autoreplant on/off
 default-enabled: true
 
-# Messages (supports & color codes)
+# ─── Messages ────────────────────────────────────────────────────────────────
+# Supports two syntaxes (can be mixed in the same string):
+#
+#   MiniMessage tags  — <green>, <bold>, <#ff0000>, <gradient:#f00:#00f>, ...
+#   Legacy & codes    — &a, &l, &#00ff00, ...  (uppercase OK: &A, &L)
+#
+# Special placeholder: <command> is replaced by the actual command label
+# the player used (e.g. "autoreplant" or "arp").
+#
+# MiniMessage reference: https://docs.advntr.dev/minimessage/format.html
+# ─────────────────────────────────────────────────────────────────────────────
 messages:
-  prefix: "&8[&aAutoReplant&8] "
-  enabled: "&a自動回種植 &l開啟"
-  disabled: "&c自動回種植 &l關閉"
-  usage: "&e用法: /<command> <on|off>"
-  no-permission: "&c你沒有權限使用此指令。"
+  prefix:        "<dark_gray>[<green>AutoReplant<dark_gray>] "
+  enabled:       "<green>自動回種植 <bold>開啟"
+  disabled:      "<red>自動回種植 <bold>關閉"
+  usage:         "<yellow>用法: /<command> <on|off>"
+  no-permission: "<red>你沒有權限使用此指令。"
