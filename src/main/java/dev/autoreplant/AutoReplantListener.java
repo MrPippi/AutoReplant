@@ -19,23 +19,16 @@ import org.bukkit.inventory.ItemStack;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class AutoReplantListener implements Listener {
 
     /**
-     * 以世界 UUID + 方塊整數座標作為穩定 key，避免 {@link Location} 因 world 參考、
-     * 座標精度或 pitch/yaw 不一致導致連續採集時僅第一格能匹配待回種佇列。
+     * 以「世界 UUID + 方塊整數座標」組成字串 key，確保 BlockBreakEvent 與 BlockDropItemEvent
+     * 使用完全一致的 key（不依賴 {@link Location#equals} 或 Block 參考），連續採集時每格都能正確匹配。
      */
-    private record BlockKey(UUID worldUuid, int x, int y, int z) {
-        static BlockKey of(Block block) {
-            return new BlockKey(
-                    block.getWorld().getUID(),
-                    block.getX(),
-                    block.getY(),
-                    block.getZ()
-            );
-        }
+    private static String blockKey(Block block) {
+        Location loc = block.getLocation();
+        return loc.getWorld().getUID() + " " + loc.getBlockX() + " " + loc.getBlockY() + " " + loc.getBlockZ();
     }
 
     /**
@@ -56,11 +49,11 @@ public class AutoReplantListener implements Listener {
     /**
      * 記錄「已確認需要回種植」的方塊位置與作物材質。
      * 由 onBlockBreak (HIGHEST) 寫入，由 onBlockDropItem (NORMAL) 讀出並清除。
-     * Key 使用 {@link BlockKey} 確保連續採集時每格都能正確匹配。
+     * Key 為 {@link #blockKey(Block)} 字串，確保連續採集時每格都能正確匹配。
      *
      * 生命週期極短（同一 tick 內的兩個事件之間），無並發問題。
      */
-    private final Map<BlockKey, Material> pendingReplants = new HashMap<>();
+    private final Map<String, Material> pendingReplants = new HashMap<>();
 
     private final AutoReplantPlugin plugin;
 
@@ -89,11 +82,18 @@ public class AutoReplantListener implements Listener {
         // 只處理支援的農作物
         if (!CROP_TO_SEED.containsKey(blockType)) return;
 
-        // 只有完全成熟（age == maxAge）時才觸發
         if (!(block.getBlockData() instanceof Ageable ageable)) return;
+
+        // 開啟自動回種時：禁止破壞未成熟農作物（避免長按左鍵誤破幼苗）
+        if (plugin.isAutoReplantEnabled(player) && ageable.getAge() < ageable.getMaximumAge()) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // 僅完全成熟（age == maxAge）時才進入待回種佇列
         if (ageable.getAge() < ageable.getMaximumAge()) return;
 
-        BlockKey key = BlockKey.of(block);
+        String key = blockKey(block);
 
         if (plugin.isAutoReplantEnabled(player)) {
             // 標記此位置等待 BlockDropItemEvent 進行後續處理
@@ -117,7 +117,7 @@ public class AutoReplantListener implements Listener {
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onBlockDropItem(BlockDropItemEvent event) {
         Block block = event.getBlock();
-        BlockKey key = BlockKey.of(block);
+        String key = blockKey(block);
         Material blockType = pendingReplants.remove(key);
 
         // 若此位置不在待處理佇列中則略過

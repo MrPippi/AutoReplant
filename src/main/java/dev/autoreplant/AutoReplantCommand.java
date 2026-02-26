@@ -20,7 +20,7 @@ public class AutoReplantCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         // 僅限玩家使用
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("此指令只能由玩家使用。");
+            sender.sendMessage(plugin.getMessage("console-denied"));
             return true;
         }
 

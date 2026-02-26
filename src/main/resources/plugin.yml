@@ -4,7 +4,7 @@ main: dev.autoreplant.AutoReplantPlugin
 api-version: '1.21'
 description: Automatically replants crops when harvested at full maturity
 authors:
-  - AutoReplant
+  - MrPippi
 
 commands:
   autoreplant:
