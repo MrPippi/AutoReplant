@@ -1,6 +1,7 @@
 # AutoReplant
 
-> 採收成熟農作物後自動回種植的 Paper / Purpur 插件
+> 採收成熟農作物後自動回種植的 Paper / Purpur 插件  
+> 作者：MrPippi
 
 ---
 
@@ -90,6 +91,7 @@ messages:
   disabled:      "<red>自動回種植 <bold>關閉"
   usage:         "<yellow>用法: /<command> <on|off>"
   no-permission: "<red>你沒有權限使用此指令。"
+  console-denied: "<red>此指令只能由玩家使用。"
 ```
 
 #### 訊息語法說明
