@@ -7,7 +7,6 @@ import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -17,7 +16,6 @@ import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class AutoReplantListener implements Listener {
@@ -123,20 +121,20 @@ public class AutoReplantListener implements Listener {
         // 若此位置不在待處理佇列中則略過
         if (blockType == null) return;
 
+        final Player player = event.getPlayer();
+
         if (plugin.isCheckSeedsEnabled()) {
             // ── check-seeds: true ──
-            // 從掉落物中消耗一顆種子作為回種植的代價。
-            // 若掉落物中沒有種子（例如甜菜根隨機未掉種子），則放棄回種植，
-            // 讓所有掉落物正常生成。
+            // 從玩家背包中消耗一顆種子作為回種植的代價。
+            // 若背包中沒有種子，則放棄回種植，所有掉落物均正常生成。
             Material seedMaterial = CROP_TO_SEED.get(blockType);
-            if (!consumeOneSeed(event.getItems(), seedMaterial)) return;
+            if (!consumeSeedFromInventory(player, seedMaterial)) return;
         }
         // ── check-seeds: false ──
         // 不消耗種子，直接回種植；所有掉落物均正常生成。
 
         // 排程回種植（延遲一 tick 確保方塊已變為空氣）
         final Location blockLoc = block.getLocation().clone();
-        final Player player = event.getPlayer();
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             Block target = blockLoc.getBlock();
 
@@ -158,27 +156,30 @@ public class AutoReplantListener implements Listener {
     // ─── 工具方法 ──────────────────────────────────────────────────────────────
 
     /**
-     * 從 {@link BlockDropItemEvent} 的掉落物清單中找到指定材質的種子並消耗一顆。
+     * 從玩家背包中找到指定材質的種子並消耗一顆。
+     * 僅比對材質（{@link Material}），忽略自訂 ItemMeta，
+     * 確保有特殊名稱或附魔的種子也能被正確識別。
      *
      * <ul>
-     *   <li>若該堆數量 &gt; 1：數量 -1，{@link Item} 保留在清單中。
-     *   <li>若該堆數量 == 1：直接從清單移除，物品不會生成。
+     *   <li>若該堆數量 &gt; 1：數量 -1，格子保留。
+     *   <li>若該堆數量 == 1：格子設為 {@code null}（清空）。
      * </ul>
      *
-     * @param items        BlockDropItemEvent 提供的可變掉落物清單
+     * @param player       要消耗種子的玩家
      * @param seedMaterial 要消耗的種子材質
-     * @return 成功消耗回傳 {@code true}，清單中找不到種子回傳 {@code false}
+     * @return 成功消耗回傳 {@code true}，背包中找不到種子回傳 {@code false}
      */
-    private boolean consumeOneSeed(List<Item> items, Material seedMaterial) {
-        for (int i = 0; i < items.size(); i++) {
-            ItemStack stack = items.get(i).getItemStack();
-            if (stack.getType() != seedMaterial || stack.getAmount() <= 0) continue;
+    private boolean consumeSeedFromInventory(Player player, Material seedMaterial) {
+        var inv = player.getInventory();
+        for (int i = 0; i < inv.getSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (stack == null || stack.getType() != seedMaterial) continue;
 
             if (stack.getAmount() > 1) {
                 stack.setAmount(stack.getAmount() - 1);
-                items.get(i).setItemStack(stack);
+                inv.setItem(i, stack);
             } else {
-                items.remove(i);
+                inv.setItem(i, null);
             }
             return true;
         }

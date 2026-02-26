@@ -5,10 +5,10 @@
 default-enabled: true
 
 # Seed consumption check
-#   true  — A seed must be present in the block's drops before replanting.
-#           One seed is consumed from the drops as the cost of replanting.
-#           If no seed drops (e.g. unlucky beetroot harvest), replanting is skipped.
-#   false — Replant for free. No seed is consumed; all drops are given normally.
+#   true  — Player must have a seed in their inventory before replanting.
+#           One seed is consumed from the inventory as the cost of replanting.
+#           If the player has no seed, replanting is skipped and all drops spawn normally.
+#   false — Replant for free. No seed is consumed from inventory.
 check-seeds: true
 
 # ─── Messages ────────────────────────────────────────────────────────────────

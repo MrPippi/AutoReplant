@@ -70,7 +70,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 - `<command>` placeholder is resolved via `Placeholder.component(...)` (Adventure TagResolver) so it is always treated as plain text and never re-parsed by MiniMessage.
 
 #### `AutoReplantListener` (event listener)
-- Holds a `pendingReplants` map (`Map<Location, Material>`) and a plugin reference.
+- Holds a `pendingReplants` map (`Map<String, Material>`) and a plugin reference.
 - Static `Map<Material, Material> CROP_TO_SEED` defines all supported crops and their seed items.
 - Uses a **two-phase event architecture**:
 
@@ -88,7 +88,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
   - Fires only after the block has **actually broken** — guaranteed no cancellation race.
   - Drops in `event.getItems()` are the server's real computed values (includes Fortune, other-plugin modifications). No simulation needed.
   - Reads and removes the entry from `pendingReplants`; returns early if nothing was pending.
-  - If `check-seeds` is enabled: calls `consumeOneSeed(items, seedMaterial)` — removes one seed `Item` from the list (or reduces its stack amount). Returns early if no seed found.
+  - If `check-seeds` is enabled: calls `consumeSeedFromInventory(player, seedMaterial)` — removes one seed from the player's inventory (material-only match, ignores custom meta). Returns early if no seed found; all drops spawn normally.
   - If `check-seeds` is disabled: skips seed check; all drops spawn normally.
   - Schedules a 1-tick delayed task to set the block back to the crop type (at default age 0).
   - Safety check in the task: position must be `AIR` and block below must be `FARMLAND`.
@@ -97,7 +97,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 - Implements both `CommandExecutor` and `TabCompleter`.
 - Guards: player-only, `autoreplant.use` permission, exactly one argument.
 - Uses the command label (`label` param) for usage messages so `/arp` shows the correct label.
-- Tab-completes `on`/`off` with prefix filtering.
+- Tab-completes `on`/`off`/`reload` with prefix filtering.
 
 ---
 
@@ -110,7 +110,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | `POTATOES`      | `POTATO`                 | 7       |
 | `BEETROOTS`     | `BEETROOT_SEEDS`         | 3       |
 
-> Beetroots have a chance of dropping 0 seeds. In that case replanting is silently skipped (player gets all remaining drops normally — only `setDropItems(false)` is called after seed confirmation).
+> When `check-seeds: true`, replanting requires the player to have the corresponding seed in their inventory. For beetroots this means holding `BEETROOT_SEEDS`; if none are present, replanting is silently skipped and all drops spawn normally.
 
 ---
 
@@ -128,7 +128,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | `Placeholder.component("command", ...)` instead of `.replace()` | Prevents `<command>` from being parsed as a MiniMessage tag and keeps the label as plain text. Safe against user-controlled label injection. |
 | Two-phase event architecture (`BlockBreakEvent HIGHEST` + `BlockDropItemEvent`) | Eliminates the cancellation race: `BlockDropItemEvent` only fires when the break is confirmed. No need for `event.setDropItems(false)` or manual item spawning. Drops are real (not simulated). |
 | `BlockBreakEvent` cleans up stale `pendingReplants` when player is opted-out | Prevents a race where Player A's cancelled break leaves an entry that Player B (opted-out) would accidentally trigger. |
-| `check-seeds` config option | Server-admin toggle: `true` consumes one seed from drops (balanced), `false` replants for free (quality-of-life). Defaults to `true`. |
+| `check-seeds` config option | Server-admin toggle: `true` consumes one seed from the **player's inventory** (balanced — requires seeds on hand), `false` replants for free (quality-of-life). Defaults to `true`. |
 
 ---
 
@@ -184,14 +184,12 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | Pitfall | Avoidance |
 |---------|-----------|
 | Calling `block.setType()` in the same tick as `BlockBreakEvent` | Always use `runTask` (1-tick delay). |
-| Forgetting `event.setDropItems(false)` before dropping items manually | This causes double drops; the guard is in the listener after `consumeOneSeed` returns `true`. |
-| Modifying `drops` collection while iterating | `consumeOneSeed` only modifies the `amount` field of an existing `ItemStack` — it does not remove elements from the collection mid-iteration. |
 | `block.getDrops()` ignoring Fortune | Pass both `tool` and `player` to `block.getDrops(ItemStack, Entity)`. |
 | Saving all players regardless of default | Only store overrides; check `if (enabled == defaultEnabled) playerStates.remove(uuid)`. |
 | Using `.replace("<command>", label)` on raw config strings | String replacement runs before MiniMessage parsing; `<command>` would be parsed as an unknown tag. Always use `Placeholder.component(...)` inside `MM.deserialize()`. |
 | Calling `MiniMessage.deserialize()` directly on a config string without `translateLegacy()` | Legacy `&` codes in the string would appear as literal ampersand characters. Always go through `getMessage()`. |
 | Modifying drops in `BlockBreakEvent` | If a HIGHEST-priority plugin later cancels the break, items were already dropped but the block is still there (free items bug). Always use `BlockDropItemEvent` to modify drops. |
-| Iterating `List<Item>` with a for-each and calling `list.remove(item)` inside | Causes `ConcurrentModificationException`. Use an index-based `for (int i = 0; ...)` loop as done in `consumeOneSeed`. |
+| Using `Inventory.removeItem(new ItemStack(...))` for seed check | `removeItem` uses `isSimilar` which compares ItemMeta — a renamed seed would not match. `consumeSeedFromInventory` iterates slots and checks only `Material` type, so custom-named seeds are consumed correctly. |
 | Forgetting to clean stale `pendingReplants` entries | If a player with auto-replant OFF breaks a crop that has a stale entry (from a previously-cancelled break by another player with it ON), the stale entry is removed in `onBlockBreak` before it can trigger falsely. |
 
 ---
@@ -201,6 +199,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 | Permission | Default | Description |
 |-----------|---------|-------------|
 | `autoreplant.use` | `true` (all players) | Toggle auto-replant on/off |
+| `autoreplant.reload` | `op` | Reload config.yml at runtime |
 
 ---
 
@@ -208,4 +207,4 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 
 | Command | Alias | Arguments | Permission |
 |---------|-------|-----------|------------|
-| `/autoreplant` | `/arp` | `on` \| `off` | `autoreplant.use` |
+| `/autoreplant` | `/arp` | `on` \| `off` \| `reload` | `autoreplant.use` (`reload` also requires `autoreplant.reload`) |
