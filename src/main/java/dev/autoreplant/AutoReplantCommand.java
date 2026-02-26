@@ -45,6 +45,14 @@ public class AutoReplantCommand implements CommandExecutor, TabCompleter {
                 plugin.setAutoReplant(player, false);
                 player.sendMessage(plugin.getMessage("disabled", label));
             }
+            case "reload" -> {
+                if (!player.hasPermission("autoreplant.reload")) {
+                    player.sendMessage(plugin.getMessage("no-permission"));
+                    return true;
+                }
+                plugin.reload();
+                player.sendMessage(plugin.getMessage("reload-success", label));
+            }
             default -> player.sendMessage(plugin.getMessage("usage", label));
         }
 
@@ -55,7 +63,7 @@ public class AutoReplantCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
             String input = args[0].toLowerCase();
-            return List.of("on", "off").stream()
+            return List.of("on", "off", "reload").stream()
                     .filter(s -> s.startsWith(input))
                     .toList();
         }

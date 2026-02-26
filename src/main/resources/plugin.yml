@@ -9,7 +9,7 @@ authors:
 commands:
   autoreplant:
     description: Toggle auto-replant feature on or off
-    usage: /<command> <on|off>
+    usage: /<command> <on|off|reload>
     aliases:
       - arp
     permission: autoreplant.use
@@ -18,3 +18,6 @@ permissions:
   autoreplant.use:
     description: Allows player to toggle auto-replant
     default: true
+  autoreplant.reload:
+    description: Allows reloading the AutoReplant configuration
+    default: op

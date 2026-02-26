@@ -61,6 +61,16 @@ public class AutoReplantPlugin extends JavaPlugin {
         return checkSeeds;
     }
 
+    /**
+     * 重新載入 config.yml，並更新所有從設定讀取的欄位。
+     * 不重置玩家個人狀態（players.yml 為執行期狀態，不在 reload 範圍內）。
+     */
+    public void reload() {
+        reloadConfig();
+        defaultEnabled = getConfig().getBoolean("default-enabled", true);
+        checkSeeds     = getConfig().getBoolean("check-seeds", true);
+    }
+
     public void setAutoReplant(Player player, boolean enabled) {
         UUID uuid = player.getUniqueId();
         if (enabled == defaultEnabled) {
