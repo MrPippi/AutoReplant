@@ -3,6 +3,7 @@ package dev.autoreplant;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Ageable;
@@ -18,8 +19,24 @@ import org.bukkit.inventory.ItemStack;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class AutoReplantListener implements Listener {
+
+    /**
+     * 以世界 UUID + 方塊整數座標作為穩定 key，避免 {@link Location} 因 world 參考、
+     * 座標精度或 pitch/yaw 不一致導致連續採集時僅第一格能匹配待回種佇列。
+     */
+    private record BlockKey(UUID worldUuid, int x, int y, int z) {
+        static BlockKey of(Block block) {
+            return new BlockKey(
+                    block.getWorld().getUID(),
+                    block.getX(),
+                    block.getY(),
+                    block.getZ()
+            );
+        }
+    }
 
     /**
      * 支援的農作物 → 對應需消耗的種子材質。
@@ -39,10 +56,11 @@ public class AutoReplantListener implements Listener {
     /**
      * 記錄「已確認需要回種植」的方塊位置與作物材質。
      * 由 onBlockBreak (HIGHEST) 寫入，由 onBlockDropItem (NORMAL) 讀出並清除。
+     * Key 使用 {@link BlockKey} 確保連續採集時每格都能正確匹配。
      *
      * 生命週期極短（同一 tick 內的兩個事件之間），無並發問題。
      */
-    private final Map<Location, Material> pendingReplants = new HashMap<>();
+    private final Map<BlockKey, Material> pendingReplants = new HashMap<>();
 
     private final AutoReplantPlugin plugin;
 
@@ -75,15 +93,15 @@ public class AutoReplantListener implements Listener {
         if (!(block.getBlockData() instanceof Ageable ageable)) return;
         if (ageable.getAge() < ageable.getMaximumAge()) return;
 
-        Location loc = block.getLocation();
+        BlockKey key = BlockKey.of(block);
 
         if (plugin.isAutoReplantEnabled(player)) {
             // 標記此位置等待 BlockDropItemEvent 進行後續處理
-            pendingReplants.put(loc.clone(), blockType);
+            pendingReplants.put(key, blockType);
         } else {
             // 玩家已關閉自動回種植 — 清除可能由先前取消破壞所殘留的舊紀錄，
             // 防止下一位破壞同一位置的玩家誤觸舊紀錄。
-            pendingReplants.remove(loc);
+            pendingReplants.remove(key);
         }
     }
 
@@ -98,8 +116,9 @@ public class AutoReplantListener implements Listener {
      */
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onBlockDropItem(BlockDropItemEvent event) {
-        Location loc = event.getBlock().getLocation();
-        Material blockType = pendingReplants.remove(loc);
+        Block block = event.getBlock();
+        BlockKey key = BlockKey.of(block);
+        Material blockType = pendingReplants.remove(key);
 
         // 若此位置不在待處理佇列中則略過
         if (blockType == null) return;
@@ -116,7 +135,8 @@ public class AutoReplantListener implements Listener {
         // 不消耗種子，直接回種植；所有掉落物均正常生成。
 
         // 排程回種植（延遲一 tick 確保方塊已變為空氣）
-        final Location blockLoc = loc.clone();
+        final Location blockLoc = block.getLocation().clone();
+        final Player player = event.getPlayer();
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             Block target = blockLoc.getBlock();
 
@@ -126,6 +146,12 @@ public class AutoReplantListener implements Listener {
 
             // 種回農作物（預設 BlockData → age = 0，即幼苗狀態）
             target.setType(blockType, false);
+
+            // 在該農作物位置對觸發玩家顯示 happy_villager 粒子
+            if (player.isOnline()) {
+                Location center = blockLoc.clone().add(0.5, 0.5, 0.5);
+                player.spawnParticle(Particle.HAPPY_VILLAGER, center, 8, 0.25, 0.25, 0.25, 0.02);
+            }
         });
     }
 

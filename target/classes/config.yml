@@ -1,0 +1,30 @@
+# AutoReplant Plugin Configuration
+
+# Default state for all players (true = enabled, false = disabled)
+# Players can override this per-player with /autoreplant on/off
+default-enabled: true
+
+# Seed consumption check
+#   true  — A seed must be present in the block's drops before replanting.
+#           One seed is consumed from the drops as the cost of replanting.
+#           If no seed drops (e.g. unlucky beetroot harvest), replanting is skipped.
+#   false — Replant for free. No seed is consumed; all drops are given normally.
+check-seeds: true
+
+# ─── Messages ────────────────────────────────────────────────────────────────
+# Supports two syntaxes (can be mixed in the same string):
+#
+#   MiniMessage tags  — <green>, <bold>, <#ff0000>, <gradient:#f00:#00f>, ...
+#   Legacy & codes    — &a, &l, &#00ff00, ...  (uppercase OK: &A, &L)
+#
+# Special placeholder: <command> is replaced by the actual command label
+# the player used (e.g. "autoreplant" or "arp").
+#
+# MiniMessage reference: https://docs.advntr.dev/minimessage/format.html
+# ─────────────────────────────────────────────────────────────────────────────
+messages:
+  prefix:        "<dark_gray>[<green>AutoReplant<dark_gray>] "
+  enabled:       "<green>自動回種植 <bold>開啟"
+  disabled:      "<red>自動回種植 <bold>關閉"
+  usage:         "<yellow>用法: /<command> <on|off>"
+  no-permission: "<red>你沒有權限使用此指令。"
