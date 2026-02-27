@@ -5,6 +5,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -23,24 +24,33 @@ public class AutoReplantPlugin extends JavaPlugin {
     private final Map<UUID, Boolean> playerStates = new HashMap<>();
     private boolean defaultEnabled;
     private boolean checkSeeds;
+    private boolean boneMealAutoReplant;
 
     private File dataFile;
     private YamlConfiguration dataConfig;
 
+    /** 當 AutoPickup 已安裝時為非 null，用於骨粉催熟掉落物相容。 */
+    private AutoPickupCompat autoPickupCompat;
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        defaultEnabled = getConfig().getBoolean("default-enabled", true);
-        checkSeeds     = getConfig().getBoolean("check-seeds", true);
+        loadConfigValues();
 
         dataFile = new File(getDataFolder(), "players.yml");
         loadPlayerData();
+
+        autoPickupCompat = AutoPickupCompat.create(this);
 
         getServer().getPluginManager().registerEvents(new AutoReplantListener(this), this);
 
         AutoReplantCommand commandHandler = new AutoReplantCommand(this);
         Objects.requireNonNull(getCommand("autoreplant")).setExecutor(commandHandler);
         Objects.requireNonNull(getCommand("autoreplant")).setTabCompleter(commandHandler);
+
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new AutoReplantExpansion(this).register();
+        }
 
         getLogger().info("AutoReplant v" + getDescription().getVersion() + " 已啟動！");
     }
@@ -54,11 +64,32 @@ public class AutoReplantPlugin extends JavaPlugin {
     // ─── Player state ────────────────────────────────────────────────────────
 
     public boolean isAutoReplantEnabled(Player player) {
-        return playerStates.getOrDefault(player.getUniqueId(), defaultEnabled);
+        return isAutoReplantEnabled(player.getUniqueId());
+    }
+
+    /** 供 PlaceholderAPI 等依 OfflinePlayer/UUID 查詢狀態使用。 */
+    public boolean isAutoReplantEnabled(OfflinePlayer player) {
+        return player != null && isAutoReplantEnabled(player.getUniqueId());
+    }
+
+    public boolean isAutoReplantEnabled(UUID playerUuid) {
+        return playerStates.getOrDefault(playerUuid, defaultEnabled);
     }
 
     public boolean isCheckSeedsEnabled() {
         return checkSeeds;
+    }
+
+    public boolean isBoneMealAutoReplantEnabled() {
+        return boneMealAutoReplant;
+    }
+
+    /**
+     * 當 AutoPickup 已安裝時回傳相容實例，骨粉催熟產生的掉落物可依其設定直接進背包。
+     * 未安裝時回傳 null。
+     */
+    public AutoPickupCompat getAutoPickupCompat() {
+        return autoPickupCompat;
     }
 
     /**
@@ -67,8 +98,14 @@ public class AutoReplantPlugin extends JavaPlugin {
      */
     public void reload() {
         reloadConfig();
+        loadConfigValues();
+    }
+
+    /** 從 config 讀取並更新所有設定欄位（供 onEnable 與 reload 共用）。 */
+    private void loadConfigValues() {
         defaultEnabled = getConfig().getBoolean("default-enabled", true);
-        checkSeeds     = getConfig().getBoolean("check-seeds", true);
+        checkSeeds      = getConfig().getBoolean("check-seeds", true);
+        boneMealAutoReplant = getConfig().getBoolean("bone-meal-auto-replant", true);
     }
 
     public void setAutoReplant(Player player, boolean enabled) {

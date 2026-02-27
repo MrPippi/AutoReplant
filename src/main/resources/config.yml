@@ -5,11 +5,16 @@
 default-enabled: true
 
 # Seed consumption check
-#   true  — Player must have a seed in their inventory before replanting.
-#           One seed is consumed from the inventory as the cost of replanting.
-#           If the player has no seed, replanting is skipped and all drops spawn normally.
-#   false — Replant for free. No seed is consumed from inventory.
+#   true  — One seed is required for replanting. If the crop drops contain the seed,
+#           one is deducted from the drops; otherwise one is taken from the player's inventory.
+#           If neither has a seed, replanting is skipped (drops still spawn normally).
+#   false — Replant for free. No seed is consumed from drops or inventory.
 check-seeds: true
+
+# Bone meal: when a crop is fertilized to full maturity, auto harvest + replant (same as break-harvest flow).
+#   true  — Fertilizing a crop to max age triggers harvest (drops) and replant (if enabled and seed available).
+#   false — Only break-harvest triggers auto replant; bone meal has no effect.
+bone-meal-auto-replant: true
 
 # ─── Messages ────────────────────────────────────────────────────────────────
 # Supports two syntaxes (can be mixed in the same string):

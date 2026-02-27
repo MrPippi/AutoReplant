@@ -6,16 +6,23 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.Ageable;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
+import org.bukkit.event.block.BlockFertilizeEvent;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 public class AutoReplantListener implements Listener {
@@ -125,13 +132,13 @@ public class AutoReplantListener implements Listener {
 
         if (plugin.isCheckSeedsEnabled()) {
             // ── check-seeds: true ──
-            // 從玩家背包中消耗一顆種子作為回種植的代價。
-            // 若背包中沒有種子，則放棄回種植，所有掉落物均正常生成。
+            // 優先從掉落物扣一顆種子；若掉落物無種子則從背包扣。
             Material seedMaterial = CROP_TO_SEED.get(blockType);
-            if (!consumeSeedFromInventory(player, seedMaterial)) return;
+            boolean fromDrops = consumeOneSeedFromDrops(event.getItems(), seedMaterial);
+            if (!fromDrops && !consumeSeedFromInventory(player, seedMaterial)) return;
         }
         // ── check-seeds: false ──
-        // 不消耗種子，直接回種植；所有掉落物均正常生成。
+        // 不消耗種子，直接回種植。
 
         // 排程回種植（延遲一 tick 確保方塊已變為空氣）
         final Location blockLoc = block.getLocation().clone();
@@ -144,16 +151,141 @@ public class AutoReplantListener implements Listener {
 
             // 種回農作物（預設 BlockData → age = 0，即幼苗狀態）
             target.setType(blockType, false);
-
-            // 在該農作物位置對觸發玩家顯示 happy_villager 粒子
-            if (player.isOnline()) {
-                Location center = blockLoc.clone().add(0.5, 0.5, 0.5);
-                player.spawnParticle(Particle.HAPPY_VILLAGER, center, 8, 0.25, 0.25, 0.25, 0.02);
-            }
+            spawnReplantParticle(player, blockLoc);
         });
     }
 
+    // ─── 骨粉催化至成熟後自動收成 + 回種 ────────────────────────────────────────
+
+    /**
+     * 當玩家以骨粉將作物催化至完全成熟時，不取消事件；延遲 1 tick 後對該格執行
+     * 「生成掉落物 + 有條件回種」（復用 check-seeds 與玩家開關）。
+     */
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onBlockFertilize(BlockFertilizeEvent event) {
+        if (!plugin.isBoneMealAutoReplantEnabled()) return;
+
+        Player player = event.getPlayer();
+        if (player == null) return;
+        if (player.getGameMode() == GameMode.CREATIVE) return;
+
+        for (BlockState state : event.getBlocks()) {
+            if (!(state.getBlockData() instanceof Ageable ageable)) continue;
+            if (ageable.getAge() != ageable.getMaximumAge()) continue;
+            if (!CROP_TO_SEED.containsKey(state.getType())) continue;
+
+            final Location blockLoc = state.getBlock().getLocation().clone();
+            final Material blockType = state.getType();
+            final Player playerRef = player;
+
+            plugin.getServer().getScheduler().runTask(plugin, () ->
+                    harvestAndReplantBoneMeal(blockLoc, blockType, playerRef));
+        }
+    }
+
+    /**
+     * 延遲任務：對骨粉催熟的那一格執行收成（生成掉落物）並在條件滿足時回種。
+     * 若需消耗種子但背包無種子，則只收成（掉落物照常）、不回種，並將方塊設為空氣。
+     */
+    private void harvestAndReplantBoneMeal(Location blockLoc, Material blockType, Player player) {
+        Block target = blockLoc.getBlock();
+        if (target.getType() != blockType) return;
+        if (!(target.getBlockData() instanceof Ageable ageable) || ageable.getAge() != ageable.getMaximumAge()) return;
+        if (target.getRelative(BlockFace.DOWN).getType() != Material.FARMLAND) return;
+
+        Location dropCenter = blockLoc.clone().add(0.5, 0.5, 0.5);
+        Material seedMaterial = CROP_TO_SEED.get(blockType);
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        Collection<ItemStack> rawDrops = target.getDrops(hand, player);
+        DropResult dropResult = computeDropsAfterSeedConsume(rawDrops, seedMaterial,
+                plugin.isCheckSeedsEnabled());
+
+        var compat = plugin.getAutoPickupCompat();
+        if (compat != null && compat.isAvailable() && compat.isEnabledFor(player)) {
+            compat.giveDropsToPlayer(player, dropResult.toDrop, dropCenter);
+        } else {
+            for (ItemStack drop : dropResult.toDrop) {
+                if (drop.getAmount() > 0) {
+                    target.getWorld().dropItemNaturally(dropCenter, drop);
+                }
+            }
+        }
+
+        if (!plugin.isAutoReplantEnabled(player)) {
+            target.setType(Material.AIR, false);
+            return;
+        }
+
+        if (plugin.isCheckSeedsEnabled()) {
+            if (!dropResult.consumedFromDrops && !consumeSeedFromInventory(player, seedMaterial)) {
+                target.setType(Material.AIR, false);
+                return;
+            }
+        }
+
+        target.setType(blockType, false);
+        spawnReplantParticle(player, blockLoc);
+    }
+
     // ─── 工具方法 ──────────────────────────────────────────────────────────────
+
+    /** 在方塊中心對玩家顯示回種成功粒子（僅在玩家在線時）。 */
+    private void spawnReplantParticle(Player player, Location blockLoc) {
+        if (player.isOnline()) {
+            Location center = blockLoc.clone().add(0.5, 0.5, 0.5);
+            player.spawnParticle(Particle.HAPPY_VILLAGER, center, 8, 0.25, 0.25, 0.25, 0.02);
+        }
+    }
+
+    /** 掉落物處理結果：實際要生成的掉落清單，以及是否已從掉落物中扣過一顆種子。 */
+    private record DropResult(List<ItemStack> toDrop, boolean consumedFromDrops) {}
+
+    /**
+     * 當 check-seeds 時，從掉落物中扣一顆種子（優先），回傳要實際生成的掉落清單與是否已從掉落物扣除。
+     */
+    private DropResult computeDropsAfterSeedConsume(Collection<ItemStack> rawDrops,
+                                                     Material seedMaterial, boolean checkSeeds) {
+        ArrayList<ItemStack> toDrop = new ArrayList<>();
+        if (!checkSeeds) {
+            rawDrops.forEach(stack -> toDrop.add(stack.clone()));
+            return new DropResult(toDrop, false);
+        }
+        boolean consumed = false;
+        for (ItemStack stack : rawDrops) {
+            if (!consumed && stack.getType() == seedMaterial && stack.getAmount() >= 1) {
+                consumed = true;
+                if (stack.getAmount() > 1) {
+                    ItemStack reduced = stack.clone();
+                    reduced.setAmount(stack.getAmount() - 1);
+                    toDrop.add(reduced);
+                }
+            } else {
+                toDrop.add(stack.clone());
+            }
+        }
+        return new DropResult(toDrop, consumed);
+    }
+
+    /**
+     * 從 BlockDropItemEvent 的掉落實體清單中扣一顆種子（減少對應 Item 的數量或移除該 Item）。
+     * @return 是否成功從掉落物扣除一顆種子
+     */
+    private boolean consumeOneSeedFromDrops(List<Item> items, Material seedMaterial) {
+        Iterator<Item> it = items.iterator();
+        while (it.hasNext()) {
+            Item item = it.next();
+            ItemStack stack = item.getItemStack();
+            if (stack.getType() != seedMaterial) continue;
+            if (stack.getAmount() > 1) {
+                stack.setAmount(stack.getAmount() - 1);
+                item.setItemStack(stack);
+            } else {
+                it.remove();
+            }
+            return true;
+        }
+        return false;
+    }
 
     /**
      * 從玩家背包中找到指定材質的種子並消耗一顆。

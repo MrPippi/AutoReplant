@@ -6,6 +6,10 @@ description: Automatically replants crops when harvested at full maturity
 authors:
   - MrPippi
 
+softdepend:
+  - PlaceholderAPI
+  - AutoPickup
+
 commands:
   autoreplant:
     description: Toggle auto-replant feature on or off
