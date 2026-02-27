@@ -30,9 +30,17 @@ public class AutoReplantCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // 需要剛好一個子指令
-        if (args.length != 1) {
+        // 不接受超過一個參數
+        if (args.length > 1) {
             player.sendMessage(plugin.getMessage("usage", label));
+            return true;
+        }
+
+        // 無參數 → 切換目前狀態
+        if (args.length == 0) {
+            final boolean newState = !plugin.isAutoReplantEnabled(player);
+            plugin.setAutoReplant(player, newState);
+            player.sendMessage(plugin.getMessage(newState ? "enabled" : "disabled", label));
             return true;
         }
 

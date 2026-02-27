@@ -26,7 +26,7 @@ messages:
   prefix:        "<dark_gray>[<green>AutoReplant<dark_gray>] "
   enabled:       "<green>自動回種植 <bold>開啟"
   disabled:      "<red>自動回種植 <bold>關閉"
-  usage:         "<yellow>用法: /<command> <on|off>"
+  usage:         "<yellow>用法: /<command> [on|off|reload]"
   no-permission: "<red>你沒有權限使用此指令。"
   console-denied: "<red>此指令只能由玩家使用。"
   reload-success: "<green>設定檔已重新載入。"
