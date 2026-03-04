@@ -134,14 +134,17 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 
 ## Supported Crops
 
-| Block `Material` | Seed `Material` consumed | Max age |
-|-----------------|--------------------------|---------|
-| `WHEAT`         | `WHEAT_SEEDS`            | 7       |
-| `CARROTS`       | `CARROT`                 | 7       |
-| `POTATOES`      | `POTATO`                 | 7       |
-| `BEETROOTS`     | `BEETROOT_SEEDS`         | 3       |
+| Block `Material` | Seed `Material` consumed | Max age | Required base block |
+|-----------------|--------------------------|---------|---------------------|
+| `WHEAT`         | `WHEAT_SEEDS`            | 7       | `FARMLAND`          |
+| `CARROTS`       | `CARROT`                 | 7       | `FARMLAND`          |
+| `POTATOES`      | `POTATO`                 | 7       | `FARMLAND`          |
+| `BEETROOTS`     | `BEETROOT_SEEDS`         | 3       | `FARMLAND`          |
+| `NETHER_WART`   | `NETHER_WART`            | 3       | `SOUL_SAND`         |
 
 > When `check-seeds: true`, replanting requires a seed: first checked in the event's drop list, then in the player's inventory. If neither has the seed, replanting is silently skipped and all drops spawn normally.
+>
+> `NETHER_WART` does not support bone meal in vanilla Minecraft, so it is never triggered by `BlockFertilizeEvent`.
 
 ---
 
@@ -173,11 +176,12 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 1. Open `AutoReplantListener.java`.
 2. Add an entry to `CROP_TO_SEED`:
    ```java
-   Material.NETHER_WART, Material.NETHER_WART  // example
+   Material.NEW_CROP, Material.NEW_CROP_SEED  // example
    ```
-3. Verify the crop block implements `Ageable` in Bukkit (`block.getBlockData() instanceof Ageable`).
-4. Confirm what material is consumed as the seed (check vanilla loot tables).
-5. No other files need changing.
+3. If the crop requires a base block other than `FARMLAND` (e.g. `SOUL_SAND`), add it to `NEEDS_SOUL_SAND`.
+4. Verify the crop block implements `Ageable` in Bukkit (`block.getBlockData() instanceof Ageable`).
+5. Confirm what material is consumed as the seed (check vanilla loot tables).
+6. No other files need changing.
 
 ---
 

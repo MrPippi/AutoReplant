@@ -39,16 +39,26 @@ public class AutoReplantListener implements Listener {
     /**
      * 支援的農作物 → 對應需消耗的種子材質。
      *
-     *   WHEAT     → WHEAT_SEEDS    (小麥種子，獨立物品)
-     *   CARROTS   → CARROT         (胡蘿蔔本身即為種子)
-     *   POTATOES  → POTATO         (馬鈴薯本身即為種子)
-     *   BEETROOTS → BEETROOT_SEEDS (甜菜根種子，獨立物品)
+     *   WHEAT        → WHEAT_SEEDS    (小麥種子，獨立物品)
+     *   CARROTS      → CARROT         (胡蘿蔔本身即為種子)
+     *   POTATOES     → POTATO         (馬鈴薯本身即為種子)
+     *   BEETROOTS    → BEETROOT_SEEDS (甜菜根種子，獨立物品)
+     *   NETHER_WART  → NETHER_WART    (地獄疙瘩本身即為種子，種在靈魂沙上)
      */
     private static final Map<Material, Material> CROP_TO_SEED = Map.of(
-            Material.WHEAT,     Material.WHEAT_SEEDS,
-            Material.CARROTS,   Material.CARROT,
-            Material.POTATOES,  Material.POTATO,
-            Material.BEETROOTS, Material.BEETROOT_SEEDS
+            Material.WHEAT,       Material.WHEAT_SEEDS,
+            Material.CARROTS,     Material.CARROT,
+            Material.POTATOES,    Material.POTATO,
+            Material.BEETROOTS,   Material.BEETROOT_SEEDS,
+            Material.NETHER_WART, Material.NETHER_WART
+    );
+
+    /**
+     * 需種在靈魂沙（SOUL_SAND）上的農作物集合。
+     * 其他農作物預設需要耕地（FARMLAND）作為底部方塊。
+     */
+    private static final java.util.Set<Material> NEEDS_SOUL_SAND = java.util.Set.of(
+            Material.NETHER_WART
     );
 
     /**
@@ -145,9 +155,12 @@ public class AutoReplantListener implements Listener {
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             Block target = blockLoc.getBlock();
 
-            // 安全確認：位置必須是空氣，且下方必須仍是耕地
+            // 安全確認：位置必須是空氣，且下方必須仍是正確底部方塊
+            // 地獄疙瘩需要靈魂沙；其餘農作物需要耕地
             if (target.getType() != Material.AIR) return;
-            if (target.getRelative(BlockFace.DOWN).getType() != Material.FARMLAND) return;
+            Material requiredBase = NEEDS_SOUL_SAND.contains(blockType)
+                    ? Material.SOUL_SAND : Material.FARMLAND;
+            if (target.getRelative(BlockFace.DOWN).getType() != requiredBase) return;
 
             // 種回農作物（預設 BlockData → age = 0，即幼苗狀態）
             target.setType(blockType, false);
@@ -191,7 +204,9 @@ public class AutoReplantListener implements Listener {
         Block target = blockLoc.getBlock();
         if (target.getType() != blockType) return;
         if (!(target.getBlockData() instanceof Ageable ageable) || ageable.getAge() != ageable.getMaximumAge()) return;
-        if (target.getRelative(BlockFace.DOWN).getType() != Material.FARMLAND) return;
+        Material requiredBase = NEEDS_SOUL_SAND.contains(blockType)
+                ? Material.SOUL_SAND : Material.FARMLAND;
+        if (target.getRelative(BlockFace.DOWN).getType() != requiredBase) return;
 
         Location dropCenter = blockLoc.clone().add(0.5, 0.5, 0.5);
         Material seedMaterial = CROP_TO_SEED.get(blockType);
