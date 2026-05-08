@@ -1,7 +1,7 @@
 name: AutoReplant
 version: ${project.version}
 main: dev.autoreplant.AutoReplantPlugin
-api-version: '1.21'
+api-version: '26.1.2'
 description: Automatically replants crops when harvested at full maturity
 authors:
   - MrPippi

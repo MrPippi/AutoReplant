@@ -8,11 +8,11 @@ This document is a guide for AI assistants working on this codebase. Read it bef
 
 | Item | Value |
 |------|-------|
-| Purpose | Paper/Purpur 1.21.x plugin — auto-replants mature crops on harvest |
-| Language | Java 21 |
+| Purpose | Paper/Purpur 26.1.2 plugin — auto-replants mature crops on harvest |
+| Language | Java 25 |
 | Build | Maven |
 | Package root | `dev.autoreplant` |
-| Supported server | Paper / Purpur 1.21.x (API 1.21.4-R0.1-SNAPSHOT) |
+| Supported server | Paper / Purpur 26.1.2 (API [26.1.2.build,)) |
 | Soft-depend | PlaceholderAPI, AutoPickup |
 | Localization | Traditional Chinese (messages, in-code comments) |
 
@@ -22,7 +22,7 @@ This document is a guide for AI assistants working on this codebase. Read it bef
 
 ```
 AutoReplant/
-├── pom.xml                                      # Maven build (Java 21, Paper API + PAPI dep)
+├── pom.xml                                      # Maven build (Java 25, Paper API + PAPI dep)
 ├── CLAUDE.md                                    # This file
 ├── README.md                                    # User-facing docs (Traditional Chinese)
 └── src/main/
@@ -188,7 +188,7 @@ Maven resource filtering is enabled — `${project.version}` inside `plugin.yml`
 ## Conventions to Follow
 
 ### Java Style
-- **Java 21 features are welcome**: switch expressions, pattern matching (`instanceof X x`), records if needed.
+- **Java 25 features are welcome**: switch expressions, pattern matching (`instanceof X x`), records, virtual threads if needed.
 - Early-return guard clauses — avoid deeply nested if blocks.
 - `final` on local variables that are not reassigned.
 - `Objects.requireNonNull()` when retrieving registered commands (nullable in Bukkit API).
