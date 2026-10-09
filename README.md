@@ -2,7 +2,7 @@
 
 > 採收成熟農作物後自動回種的 Paper / Purpur 插件
 >
-> **作者：MrPippi** ｜ Minecraft 26.1.2 ｜ Java 25 ｜ Paper / Purpur
+> **作者：MrPippi** ｜ Minecraft 26.2 ｜ Java 25 ｜ Paper / Purpur
 
 ---
 
@@ -60,7 +60,7 @@
 | 項目 | 需求 |
 |------|------|
 | 伺服器核心 | [Paper](https://papermc.io/) 或 [Purpur](https://purpurmc.org/) |
-| Minecraft 版本 | 26.1.2 以上 |
+| Minecraft 版本 | 26.2 以上 |
 | Java 版本 | Java 25 以上 |
 | 選用插件（soft-depend） | [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)、[AutoPickup](https://github.com/MrPippi/AutoPickup) |
 
