@@ -324,6 +324,9 @@ mvn verify
 
 每次 push 到 `main` 與每個 Pull Request 都會由 GitHub Actions 以 JDK 25 執行 `mvn -B verify`，建置出的 JAR 可在該次 workflow 的 Artifacts 下載。
 
+**發版**：更新 `pom.xml` 版本與 [CHANGELOG.md](CHANGELOG.md) 對應段落並合併後，在 `main` 上推送 `v<版本>` tag（例如 `v2.0.0`），
+GitHub Actions 會自動建置、測試，並建立附上 JAR 的 GitHub Release（tag 必須與 `pom.xml` 版本一致）。
+
 ---
 
 ## 更新紀錄

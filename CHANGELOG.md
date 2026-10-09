@@ -37,6 +37,8 @@
 - 單元測試（JUnit 5.14.4 + Mockito 5.24.0，共 80 個），涵蓋回種監聽器、指令、玩家狀態與訊息格式、
   AutoPickup 相容層、PlaceholderAPI 擴展。執行 `mvn verify` 會自動跑測試。
 - GitHub Actions CI：每次 push 到 `main` 與每個 Pull Request 都會以 JDK 25 執行 `mvn -B verify`，並上傳建置出的 JAR。
+- 自動發版：推送 `v*` tag 時，GitHub Actions 會建置並測試、確認 tag 與 `pom.xml` 版本一致，
+  再以本檔對應段落為說明建立 GitHub Release，並附上 JAR。
 
 ### 升級後需手動確認的事項
 
