@@ -17,7 +17,9 @@
 - [設定檔](#設定檔)
 - [PlaceholderAPI](#placeholderapi)
 - [運作原理](#運作原理)
+- [依賴說明](#依賴說明)
 - [從原始碼編譯](#從原始碼編譯)
+- [更新紀錄](#更新紀錄)
 - [授權](#授權)
 
 ---
@@ -62,7 +64,9 @@
 | 伺服器核心 | [Paper](https://papermc.io/) 或 [Purpur](https://purpurmc.org/) |
 | Minecraft 版本 | 26.2 以上 |
 | Java 版本 | Java 25 以上 |
-| 選用插件（soft-depend） | [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)、[AutoPickup](https://github.com/MrPippi/AutoPickup) |
+| 選用插件（soft-depend） | [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)（2.11.x / 2.12.x）、[AutoPickup](https://github.com/MrPippi/AutoPickup) |
+
+> **從舊版升級？** 本版起最低需求為 26.2，26.2 以前的伺服器會拒絕載入；骨粉自動收成也改為遵循玩家個人開關。詳見 [CHANGELOG](CHANGELOG.md)。
 
 ---
 
@@ -272,17 +276,59 @@ BlockFertilizeEvent（NORMAL 優先度）
 
 ---
 
+## 依賴說明
+
+所有執行期依賴皆為 `provided`（由伺服器提供），**不會**打包進 JAR；插件本身沒有任何需要另外安裝的函式庫。
+
+**執行期 / 編譯期**
+
+| 依賴 | 版本 | Scope | 用途 | Maven 倉庫 |
+|------|------|-------|------|-----------|
+| `io.papermc.paper:paper-api` | 26.2.build.132-stable | provided | Paper API（含 Adventure / MiniMessage） | `https://repo.papermc.io/repository/maven-public/` |
+| `me.clip:placeholderapi` | 2.12.3 | provided | `%autoreplant_status%` 變數（選用，未安裝時自動略過） | `https://repo.helpch.at/releases/` |
+| AutoPickup | — | 無 | 透過反射呼叫，不需編譯依賴（選用） | — |
+
+**測試**（只在 `mvn test` / `mvn verify` 時使用）
+
+| 依賴 | 版本 |
+|------|------|
+| `org.junit.jupiter:junit-jupiter` | 5.14.4 |
+| `org.mockito:mockito-core` | 5.24.0（以 `-javaagent` 方式載入） |
+
+**建置外掛**（版本皆已固定，不隨 Maven 版本改變）
+
+| 外掛 | 版本 |
+|------|------|
+| `maven-compiler-plugin` | 3.16.0（`release` = 25） |
+| `maven-resources-plugin` | 3.3.1（`plugin.yml` 的 `${project.version}` 會被替換） |
+| `maven-jar-plugin` | 3.4.1 |
+| `maven-surefire-plugin` | 3.5.6 |
+| `maven-dependency-plugin` | 3.7.0（提供 Mockito agent 路徑給 surefire） |
+
+> 升級 `paper-api` 時，請同步調整 `src/main/resources/plugin.yml` 的 `api-version`，並更新本表與 README 的伺服器需求。
+
+---
+
 ## 從原始碼編譯
 
-**需求**：JDK 25、Maven 3.6+
+**需求**：JDK 25、Maven 3.6.3+
 
 ```bash
-git clone <此倉庫>
+git clone https://github.com/MrPippi/AutoReplant.git
 cd AutoReplant
-mvn package
+mvn verify
 ```
 
-編譯完成後，JAR 檔位於 `target/AutoReplant-1.0.0.jar`，直接放入 `plugins/` 資料夾即可。
+`mvn verify` 會編譯、執行全部單元測試並打包；只想打包、略過測試可用 `mvn package -DskipTests`。
+編譯完成後，JAR 檔位於 `target/AutoReplant-<版本>.jar`，直接放入 `plugins/` 資料夾即可。
+
+每次 push 到 `main` 與每個 Pull Request 都會由 GitHub Actions 以 JDK 25 執行 `mvn -B verify`，建置出的 JAR 可在該次 workflow 的 Artifacts 下載。
+
+---
+
+## 更新紀錄
+
+各版本變更與升級注意事項請見 [CHANGELOG.md](CHANGELOG.md)。
 
 ---
 
