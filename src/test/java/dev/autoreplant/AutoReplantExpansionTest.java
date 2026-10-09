@@ -1,7 +1,11 @@
 package dev.autoreplant;
 
 import org.bukkit.OfflinePlayer;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.junit.jupiter.api.Test;
+
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -15,6 +19,23 @@ class AutoReplantExpansionTest {
     private final AutoReplantPlugin plugin = mock(AutoReplantPlugin.class);
     private final AutoReplantExpansion expansion = new AutoReplantExpansion(plugin);
     private final OfflinePlayer player = mock(OfflinePlayer.class);
+
+    /** 以打包（已 filtering）的 plugin.yml 建立描述檔。 */
+    private static PluginDescriptionFile bundledDescription() throws Exception {
+        var in = AutoReplantExpansionTest.class.getClassLoader().getResourceAsStream("plugin.yml");
+        return new PluginDescriptionFile(new InputStreamReader(in, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void authorAndVersionComeFromPluginYml() throws Exception {
+        PluginDescriptionFile description = bundledDescription();
+        // PluginDescriptionFile 同時實作 PluginMeta，兩種取得方式回傳同一份資料
+        when(plugin.getDescription()).thenReturn(description);
+        when(plugin.getPluginMeta()).thenReturn(description);
+
+        assertEquals("MrPippi", expansion.getAuthor());
+        assertEquals("1.0.0", expansion.getVersion());
+    }
 
     @Test
     void identifierAndPersist() {
