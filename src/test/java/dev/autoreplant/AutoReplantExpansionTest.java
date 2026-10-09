@@ -33,7 +33,7 @@ class AutoReplantExpansionTest {
         when(plugin.getPluginMeta()).thenReturn(description);
 
         assertEquals("MrPippi", expansion.getAuthor());
-        assertEquals("1.0.0", expansion.getVersion());
+        assertEquals("2.0.0", expansion.getVersion());
     }
 
     @Test

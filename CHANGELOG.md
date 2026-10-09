@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-09
+
 > 發版前請先完成 [升級後需手動確認的事項](#升級後需手動確認的事項)。
 
 ### ⚠️ 破壞性變更（Breaking）
@@ -81,8 +83,8 @@
 
 **發版**
 
-- [ ] 決定新版本號並更新 `pom.xml` 的 `<version>`（含破壞性變更，建議至少 `2.0.0`）
-- [ ] 將本節 `[Unreleased]` 改為該版本號與日期
+- [x] `pom.xml` 版本號升為 `2.0.0`，本節由 `[Unreleased]` 改為 `[2.0.0]`
+- [ ] 以上項目確認無誤後，建立 `v2.0.0` tag 與 GitHub Release，並附上 `AutoReplant-2.0.0.jar`
 - [ ] 發版說明中標明最低伺服器版本 26.2，以及骨粉行為的變更
 
 ## [1.0.0] - 2026-05-08
@@ -95,5 +97,6 @@
 - MiniMessage 與 `&` 色碼訊息、PlaceholderAPI `%autoreplant_status%`、AutoPickup 相容
 - 需求：Java 25、Paper 26.1.2
 
-[Unreleased]: https://github.com/MrPippi/AutoReplant/compare/cb0cad1...HEAD
+[Unreleased]: https://github.com/MrPippi/AutoReplant/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/MrPippi/AutoReplant/compare/cb0cad1...v2.0.0
 [1.0.0]: https://github.com/MrPippi/AutoReplant/tree/cb0cad1
