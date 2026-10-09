@@ -22,6 +22,7 @@ public class TestRegistryAccess implements RegistryAccess {
     private static final Set<String> AIR = Set.of("air", "cave_air", "void_air");
 
     @Override
+    @SuppressWarnings("removal") // 介面仍要求實作此方法
     public <T extends Keyed> Registry<T> getRegistry(Class<T> type) {
         return registry();
     }

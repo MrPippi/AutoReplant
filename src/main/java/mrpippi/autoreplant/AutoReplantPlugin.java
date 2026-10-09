@@ -52,7 +52,7 @@ public class AutoReplantPlugin extends JavaPlugin {
             new AutoReplantExpansion(this).register();
         }
 
-        getLogger().info("AutoReplant v" + getDescription().getVersion() + " 已啟動！");
+        getLogger().info("AutoReplant v" + getPluginMeta().getVersion() + " 已啟動！");
     }
 
     @Override
