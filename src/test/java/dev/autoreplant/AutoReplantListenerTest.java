@@ -81,6 +81,7 @@ class AutoReplantListenerTest {
         target = mock(Block.class);
         below = mock(Block.class);
         when(target.getRelative(BlockFace.DOWN)).thenReturn(below);
+        when(crop.getRelative(BlockFace.DOWN)).thenReturn(below);
         when(target.getWorld()).thenReturn(world);
         when(world.getBlockAt(any(Location.class))).thenReturn(target);
         when(world.getBlockAt(anyInt(), anyInt(), anyInt())).thenReturn(target);
@@ -428,17 +429,37 @@ class AutoReplantListenerTest {
     }
 
     @Test
-    void seedIsConsumedEvenIfReplantLaterFailsOnWrongGround() {
+    void wrongGroundKeepsSeedInDrops() {
         when(plugin.isCheckSeedsEnabled()).thenReturn(true);
         cropIs(Material.WHEAT, 7);
         groundReady(Material.DIRT);
 
         ItemStack seeds = stack(Material.WHEAT_SEEDS, 2);
+        Item seedItem = itemEntity(seeds);
+        List<Item> items = new ArrayList<>(List.of(seedItem));
         breakCrop();
-        dropFromCrop(new ArrayList<>(List.of(itemEntity(seeds))));
+        dropFromCrop(items);
 
-        assertEquals(1, seeds.getAmount());
+        assertEquals(2, seeds.getAmount());
+        assertEquals(List.of(seedItem), items);
+        verify(scheduler, never()).runTask(any(Plugin.class), any(Runnable.class));
         verify(target, never()).setType(any(Material.class), anyBoolean());
+    }
+
+    @Test
+    void wrongGroundKeepsSeedInInventory() {
+        when(plugin.isCheckSeedsEnabled()).thenReturn(true);
+        cropIs(Material.NETHER_WART, 3);
+        groundReady(Material.FARMLAND); // 地獄疙瘩需要靈魂沙
+
+        ItemStack invWart = stack(Material.NETHER_WART, 3);
+        when(inventory.getItem(0)).thenReturn(invWart);
+        breakCrop();
+        dropFromCrop(new ArrayList<>());
+
+        assertEquals(3, invWart.getAmount());
+        verify(inventory, never()).setItem(anyInt(), any());
+        verify(scheduler, never()).runTask(any(Plugin.class), any(Runnable.class));
     }
 
     // ─── 骨粉 ─────────────────────────────────────────────────────────────────
@@ -513,15 +534,27 @@ class AutoReplantListenerTest {
     }
 
     @Test
-    void boneMealHarvestsEvenWhenAutoReplantDisabledButLeavesAir() {
-        // 注意：骨粉收成不看玩家開關，只看 bone-meal-auto-replant；玩家關閉時仍會收成並清成空氣
+    void boneMealDoesNotHarvestWhenPlayerDisabledAutoReplant() {
+        // 玩家個人開關關閉時維持原版行為：作物長熟留在原地，不自動收成
         when(plugin.isAutoReplantEnabled(player)).thenReturn(false);
         targetIsMature(Material.WHEAT, 7, stack(Material.WHEAT, 1));
         fertilize(fertilizedState(Material.WHEAT, 7, 7));
 
-        droppedNaturally(1);
-        verify(target).setType(Material.AIR, false);
-        verify(target, never()).setType(Material.WHEAT, false);
+        verify(scheduler, never()).runTask(any(Plugin.class), any(Runnable.class));
+        droppedNaturally(0);
+        verify(target, never()).setType(any(Material.class), anyBoolean());
+    }
+
+    @Test
+    void boneMealTaskSkipsIfPlayerDisablesAutoReplantBeforeNextTick() {
+        targetIsMature(Material.WHEAT, 7, stack(Material.WHEAT, 1));
+        // 事件當下為開啟，排程任務執行時已關閉
+        when(plugin.isAutoReplantEnabled(player)).thenReturn(true, false);
+        fertilize(fertilizedState(Material.WHEAT, 7, 7));
+
+        verify(scheduler).runTask(any(Plugin.class), any(Runnable.class));
+        droppedNaturally(0);
+        verify(target, never()).setType(any(Material.class), anyBoolean());
     }
 
     @Test
