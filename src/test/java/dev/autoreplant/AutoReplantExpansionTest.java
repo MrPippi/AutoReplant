@@ -29,8 +29,7 @@ class AutoReplantExpansionTest {
     @Test
     void authorAndVersionComeFromPluginYml() throws Exception {
         PluginDescriptionFile description = bundledDescription();
-        // PluginDescriptionFile 同時實作 PluginMeta，兩種取得方式回傳同一份資料
-        when(plugin.getDescription()).thenReturn(description);
+        // PluginDescriptionFile 同時實作 PluginMeta
         when(plugin.getPluginMeta()).thenReturn(description);
 
         assertEquals("MrPippi", expansion.getAuthor());
