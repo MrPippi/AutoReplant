@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### 變更（Changed）
+
+- 原始碼目錄由 `src/main/java/mrpippi/autoreplant/` 搬到與 package 宣告一致的 `src/main/java/dev/autoreplant/`。
+  僅搬移檔案，編譯產出的 class 與先前完全相同，對伺服器與玩家沒有任何影響。
+
 ## [2.0.0] - 2026-10-09
 
 > 發版前請先完成 [升級後需手動確認的事項](#升級後需手動確認的事項)。
