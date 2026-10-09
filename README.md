@@ -2,7 +2,7 @@
 
 > 採收成熟農作物後自動回種的 Paper / Purpur 插件
 >
-> **作者：MrPippi** ｜ Minecraft 1.21.x ｜ Java 21 ｜ Paper / Purpur
+> **作者：MrPippi** ｜ Minecraft 26.1.2 ｜ Java 25 ｜ Paper / Purpur
 
 ---
 
@@ -60,8 +60,8 @@
 | 項目 | 需求 |
 |------|------|
 | 伺服器核心 | [Paper](https://papermc.io/) 或 [Purpur](https://purpurmc.org/) |
-| Minecraft 版本 | 1.21.x |
-| Java 版本 | Java 21 以上 |
+| Minecraft 版本 | 26.1.2 以上 |
+| Java 版本 | Java 25 以上 |
 | 選用插件（soft-depend） | [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)、[AutoPickup](https://github.com/MrPippi/AutoPickup) |
 
 ---
@@ -270,7 +270,7 @@ BlockFertilizeEvent（NORMAL 優先度）
 
 ## 從原始碼編譯
 
-**需求**：JDK 21、Maven 3.6+
+**需求**：JDK 25、Maven 3.6+
 
 ```bash
 git clone <此倉庫>
