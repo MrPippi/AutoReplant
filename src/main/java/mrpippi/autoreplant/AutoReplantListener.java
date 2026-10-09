@@ -140,6 +140,9 @@ public class AutoReplantListener implements Listener {
 
         final Player player = event.getPlayer();
 
+        // 底部方塊不對就不可能回種：在扣種子之前先結束，避免種子白白被消耗
+        if (block.getRelative(BlockFace.DOWN).getType() != requiredBase(blockType)) return;
+
         if (plugin.isCheckSeedsEnabled()) {
             // ── check-seeds: true ──
             // 優先從掉落物扣一顆種子；若掉落物無種子則從背包扣。
@@ -158,9 +161,7 @@ public class AutoReplantListener implements Listener {
             // 安全確認：位置必須是空氣，且下方必須仍是正確底部方塊
             // 地獄疙瘩需要靈魂沙；其餘農作物需要耕地
             if (target.getType() != Material.AIR) return;
-            Material requiredBase = NEEDS_SOUL_SAND.contains(blockType)
-                    ? Material.SOUL_SAND : Material.FARMLAND;
-            if (target.getRelative(BlockFace.DOWN).getType() != requiredBase) return;
+            if (target.getRelative(BlockFace.DOWN).getType() != requiredBase(blockType)) return;
 
             // 種回農作物（預設 BlockData → age = 0，即幼苗狀態）
             target.setType(blockType, false);
@@ -181,6 +182,8 @@ public class AutoReplantListener implements Listener {
         Player player = event.getPlayer();
         if (player == null) return;
         if (player.getGameMode() == GameMode.CREATIVE) return;
+        // 玩家已關閉自動回種：維持原版行為，作物只長熟、不自動收成
+        if (!plugin.isAutoReplantEnabled(player)) return;
 
         for (BlockState state : event.getBlocks()) {
             if (!(state.getBlockData() instanceof Ageable ageable)) continue;
@@ -199,14 +202,14 @@ public class AutoReplantListener implements Listener {
     /**
      * 延遲任務：對骨粉催熟的那一格執行收成（生成掉落物）並在條件滿足時回種。
      * 若需消耗種子但背包無種子，則只收成（掉落物照常）、不回種，並將方塊設為空氣。
+     * 若玩家在這一 tick 內關閉了自動回種，則不收成，作物維持成熟狀態。
      */
     private void harvestAndReplantBoneMeal(Location blockLoc, Material blockType, Player player) {
+        if (!plugin.isAutoReplantEnabled(player)) return;
         Block target = blockLoc.getBlock();
         if (target.getType() != blockType) return;
         if (!(target.getBlockData() instanceof Ageable ageable) || ageable.getAge() != ageable.getMaximumAge()) return;
-        Material requiredBase = NEEDS_SOUL_SAND.contains(blockType)
-                ? Material.SOUL_SAND : Material.FARMLAND;
-        if (target.getRelative(BlockFace.DOWN).getType() != requiredBase) return;
+        if (target.getRelative(BlockFace.DOWN).getType() != requiredBase(blockType)) return;
 
         Location dropCenter = blockLoc.clone().add(0.5, 0.5, 0.5);
         Material seedMaterial = CROP_TO_SEED.get(blockType);
@@ -226,11 +229,6 @@ public class AutoReplantListener implements Listener {
             }
         }
 
-        if (!plugin.isAutoReplantEnabled(player)) {
-            target.setType(Material.AIR, false);
-            return;
-        }
-
         if (plugin.isCheckSeedsEnabled()) {
             if (!dropResult.consumedFromDrops && !consumeSeedFromInventory(player, seedMaterial)) {
                 target.setType(Material.AIR, false);
@@ -243,6 +241,11 @@ public class AutoReplantListener implements Listener {
     }
 
     // ─── 工具方法 ──────────────────────────────────────────────────────────────
+
+    /** 農作物所需的底部方塊：地獄疙瘩為靈魂沙，其餘為耕地。 */
+    private static Material requiredBase(Material crop) {
+        return NEEDS_SOUL_SAND.contains(crop) ? Material.SOUL_SAND : Material.FARMLAND;
+    }
 
     /** 在方塊中心對玩家顯示回種成功粒子（僅在玩家在線時）。 */
     private void spawnReplantParticle(Player player, Location blockLoc) {

@@ -12,7 +12,8 @@ default-enabled: true
 check-seeds: true
 
 # Bone meal: when a crop is fertilized to full maturity, auto harvest + replant (same as break-harvest flow).
-#   true  — Fertilizing a crop to max age triggers harvest (drops) and replant (if enabled and seed available).
+#   true  — Fertilizing a crop to max age triggers harvest (drops) and replant (seed rules per check-seeds).
+#           Players who turned auto-replant off get vanilla behavior: the crop just grows, no harvest.
 #   false — Only break-harvest triggers auto replant; bone meal has no effect.
 bone-meal-auto-replant: true
 
